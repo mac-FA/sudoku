@@ -1,0 +1,1485 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#3b5a7a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Sudoku">
+<title>Sudoku — Ruhig & Klar</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon.svg">
+<style>
+  /* === Designsystem ============================================ */
+  :root {
+    --bg:        #f4ede0;
+    --bg-soft:   #ebe2d1;
+    --surface:   #fbf6ec;
+    --ink:       #2a3340;
+    --ink-soft:  #5a6473;
+    --line:      #c9bfac;
+    --line-bold: #6c6354;
+    --accent:    #3b5a7a;
+    --accent-soft:#dbe4ee;
+    --given:     #2a3340;
+    --user:      #3b5a7a;
+    --note:      #7a7263;
+    --hi-cell:   #e8dfca;
+    --hi-row:    #efe8d6;
+    --hi-same:   #d8c8a8;
+    --conflict:  #b9555a;
+    --even:      #e3dac3;
+    --hyper:     #d8e0eb;
+    --diag:      #e6dec9;
+    --shadow:    0 2px 6px rgba(60, 50, 35, 0.08);
+    --radius:    14px;
+    --tap:       48px;
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --font-num: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  }
+  [data-theme="dark"] {
+    --bg:        #1d232c;
+    --bg-soft:   #232a35;
+    --surface:   #2a323d;
+    --ink:       #ece4d2;
+    --ink-soft:  #a39c8c;
+    --line:      #3d4654;
+    --line-bold: #8a93a4;
+    --accent:    #8fb3d9;
+    --accent-soft:#3a4658;
+    --given:     #ece4d2;
+    --user:      #8fb3d9;
+    --note:      #8a8675;
+    --hi-cell:   #38414f;
+    --hi-row:    #2f3744;
+    --hi-same:   #4a5466;
+    --conflict:  #d57a7e;
+    --even:      #353c47;
+    --hyper:     #2c3a4d;
+    --diag:      #3a3a2f;
+    --shadow:    0 2px 6px rgba(0, 0, 0, 0.3);
+  }
+
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  [hidden] { display: none !important; }
+  html, body { margin: 0; padding: 0; height: 100%; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--font);
+    font-size: 16px;
+    line-height: 1.4;
+    overscroll-behavior: none;
+    touch-action: manipulation;
+    transition: background-color .35s ease, color .35s ease;
+  }
+  button { font-family: inherit; font-size: inherit; color: inherit; cursor: pointer; }
+  button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  /* === Layout =================================================== */
+  .app {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 12px 14px calc(env(safe-area-inset-bottom, 0px) + 14px);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-height: 100%;
+  }
+
+  header.top {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 2px;
+  }
+  .title {
+    font-size: 1.15rem;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    flex: 1;
+  }
+  .title small {
+    font-weight: 400;
+    color: var(--ink-soft);
+    font-size: 0.78rem;
+    margin-left: 8px;
+  }
+  .icon-btn {
+    width: var(--tap); height: var(--tap);
+    border: none;
+    border-radius: 12px;
+    background: transparent;
+    display: inline-flex; align-items: center; justify-content: center;
+    transition: background-color .2s ease;
+  }
+  .icon-btn:hover { background: var(--bg-soft); }
+  .icon-btn svg { width: 22px; height: 22px; stroke: var(--ink); fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+  /* === Status-Leiste ============================================ */
+  .status {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 12px;
+    background: var(--surface);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    font-variant-numeric: tabular-nums;
+    color: var(--ink-soft);
+    font-size: 0.92rem;
+  }
+  .status .group { display: inline-flex; gap: 14px; align-items: center; }
+  .status strong { color: var(--ink); font-weight: 600; }
+  .status .pause-btn {
+    background: transparent; border: none; padding: 6px 8px;
+    border-radius: 8px; color: var(--ink-soft);
+    display: inline-flex; align-items: center; gap: 4px;
+  }
+  .status .pause-btn:hover { background: var(--bg-soft); color: var(--ink); }
+
+  /* === Brett =================================================== */
+  .board-wrap {
+    background: var(--surface);
+    border-radius: var(--radius);
+    padding: 12px;
+    box-shadow: var(--shadow);
+    display: flex;
+    justify-content: center;
+    position: relative;
+  }
+  .board {
+    --gap: 1px;
+    display: grid;
+    gap: 0;
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    background: var(--line-bold);
+    border: 2px solid var(--line-bold);
+    border-radius: 8px;
+    overflow: hidden;
+    user-select: none;
+    -webkit-user-select: none;
+    position: relative;
+  }
+  .cell {
+    background: var(--surface);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    font-family: var(--font-num);
+    color: var(--given);
+    cursor: pointer;
+    transition: background-color .15s ease;
+    border: 1px solid var(--line);
+  }
+  /* dicke Linien werden per JS pro Variante gesetzt */
+  .cell.r-bold { border-bottom: 2px solid var(--line-bold); }
+  .cell.c-bold { border-right: 2px solid var(--line-bold); }
+  .cell.even-bg { background: var(--even); }
+  .cell.hyper-bg { background: var(--hyper); }
+  .cell.diag-bg { background: var(--diag); }
+  .cell.diag-bg.even-bg { background: linear-gradient(135deg, var(--diag) 50%, var(--even) 50%); }
+
+  .cell.hi-area  { background: var(--hi-row); }
+  .cell.hi-same  { background: var(--hi-same); }
+  .cell.selected { background: var(--hi-cell); box-shadow: inset 0 0 0 2px var(--accent); z-index: 2; }
+  .cell.conflict .num { color: var(--conflict); }
+  .cell.user .num { color: var(--user); }
+  .cell .num {
+    font-size: clamp(18px, 6vw, 32px);
+    line-height: 1;
+    pointer-events: none;
+  }
+  .cell .notes {
+    position: absolute; inset: 0;
+    display: grid;
+    padding: 4%;
+    color: var(--note);
+    font-family: var(--font);
+    font-size: clamp(8px, 2.2vw, 11px);
+    line-height: 1;
+  }
+  .cell .notes span {
+    display: flex; align-items: center; justify-content: center;
+  }
+  .cell .notes span.hi { color: var(--accent); font-weight: 700; }
+  .color-dot {
+    width: 62%; height: 62%;
+    max-width: 30px; max-height: 30px;
+    min-width: 14px; min-height: 14px;
+    border-radius: 50%;
+    box-shadow: inset 0 0 0 2px rgba(0,0,0,0.08);
+  }
+  .color-note {
+    display: inline-block;
+    width: 65%; height: 65%;
+    border-radius: 50%;
+  }
+  .pad button .color-pad-dot {
+    width: 60%; aspect-ratio: 1 / 1;
+    max-width: 30px;
+    border-radius: 50%;
+    margin: 0 auto;
+    box-shadow: inset 0 0 0 2px rgba(0,0,0,0.08);
+  }
+
+  .board.size-9 { grid-template-columns: repeat(9, 1fr); grid-template-rows: repeat(9, 1fr); }
+  .board.size-9 .cell .notes { grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr); }
+  .board.size-6 { grid-template-columns: repeat(6, 1fr); grid-template-rows: repeat(6, 1fr); }
+  .board.size-6 .cell .notes { grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(2, 1fr); }
+  .board.size-6 .cell .num { font-size: clamp(22px, 8vw, 40px); }
+
+  /* Diagonal-Markierung als Overlay (nur für Diagonal-Variante) */
+  .board.diag::before, .board.diag::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background-repeat: no-repeat;
+    background-size: 100% 100%;
+    opacity: 0.3;
+  }
+
+  /* Pause-Schleier */
+  .board.paused .cell .num,
+  .board.paused .cell .notes { visibility: hidden; }
+  .pause-veil {
+    position: absolute; inset: 12px;
+    border-radius: 8px;
+    background: rgba(0,0,0,0.04);
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--ink-soft);
+    font-size: 1rem;
+  }
+  .pause-veil button {
+    background: var(--accent); color: #fff; border: none;
+    padding: 14px 24px; border-radius: 12px; font-size: 1rem;
+  }
+
+  /* === Aktionsleiste ============================================ */
+  .actions {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 6px;
+  }
+  .actions button {
+    background: var(--surface);
+    border: 1px solid transparent;
+    border-radius: 12px;
+    padding: 8px 4px 6px;
+    min-height: var(--tap);
+    color: var(--ink);
+    display: flex; flex-direction: column; align-items: center; gap: 2px;
+    box-shadow: var(--shadow);
+    transition: background-color .15s ease, transform .08s ease;
+    font-size: 0.78rem;
+  }
+  .actions button:hover { background: var(--bg-soft); }
+  .actions button:active { transform: scale(0.97); }
+  .actions button[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); }
+  .actions button:disabled { opacity: 0.4; cursor: not-allowed; }
+  .actions button svg { width: 22px; height: 22px; stroke: currentColor; fill: none; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+  .actions button .badge {
+    position: absolute; top: 4px; right: 6px;
+    background: var(--accent); color: #fff;
+    font-size: 0.65rem; padding: 1px 6px; border-radius: 999px;
+  }
+  .actions button { position: relative; }
+
+  /* === Zahlenpad =============================================== */
+  .pad {
+    display: grid;
+    gap: 6px;
+  }
+  .pad.size-9 { grid-template-columns: repeat(9, 1fr); }
+  .pad.size-6 { grid-template-columns: repeat(6, 1fr); }
+  .pad button {
+    background: var(--surface);
+    border: 1px solid transparent;
+    border-radius: 12px;
+    min-width: 0;
+    min-height: 56px;
+    padding: 0;
+    font-family: var(--font-num);
+    font-size: 1.6rem;
+    color: var(--ink);
+    box-shadow: var(--shadow);
+    position: relative;
+    overflow: hidden;
+    transition: background-color .15s ease, transform .08s ease;
+  }
+  .pad button:active { transform: scale(0.96); }
+  .pad button:hover { background: var(--bg-soft); }
+  .pad button.done { color: var(--ink-soft); background: var(--bg-soft); }
+  .pad button.done::after {
+    content: ''; position: absolute; left: 22%; right: 22%; top: 52%;
+    border-top: 2px solid var(--ink-soft); transform: rotate(-12deg);
+  }
+  .pad button .count {
+    position: absolute; bottom: 3px; right: 6px;
+    font-size: 0.65rem; color: var(--ink-soft); font-family: var(--font);
+  }
+
+  /* === Modale =================================================== */
+  .modal-bg {
+    position: fixed; inset: 0;
+    background: rgba(20, 18, 14, 0.45);
+    display: none;
+    align-items: center; justify-content: center;
+    padding: 16px;
+    z-index: 50;
+    animation: fade .2s ease;
+  }
+  .modal-bg.open { display: flex; }
+  @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+  .modal {
+    background: var(--surface);
+    color: var(--ink);
+    border-radius: 18px;
+    padding: 18px;
+    width: 100%; max-width: 460px;
+    max-height: calc(100vh - 32px);
+    overflow-y: auto;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.25);
+  }
+  .modal h2 {
+    margin: 4px 0 12px; font-size: 1.1rem; font-weight: 600;
+  }
+  .modal h3 {
+    margin: 16px 0 8px; font-size: 0.85rem; font-weight: 600;
+    color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.06em;
+  }
+  .modal .row { display: flex; gap: 8px; align-items: center; justify-content: space-between; padding: 6px 2px; }
+  .modal .row label { flex: 1; }
+  .modal .close-btn {
+    float: right; background: transparent; border: none;
+    width: 36px; height: 36px; border-radius: 10px; color: var(--ink-soft);
+  }
+  .modal .close-btn:hover { background: var(--bg-soft); color: var(--ink); }
+
+  .opt-grid {
+    display: grid; gap: 6px;
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .opt-grid button {
+    background: var(--bg-soft);
+    border: 2px solid transparent;
+    border-radius: 12px;
+    padding: 10px 12px;
+    text-align: left;
+    color: var(--ink);
+    line-height: 1.25;
+    min-width: 0;
+    overflow: hidden;
+  }
+  .opt-grid button .opt-title { font-weight: 600; display: block; margin-bottom: 2px; }
+  .opt-grid button .opt-desc { font-size: 0.78rem; color: var(--ink-soft); display: block; }
+  .opt-grid button[aria-pressed="true"] {
+    background: var(--accent-soft); border-color: var(--accent); color: var(--accent);
+  }
+  .opt-grid button[aria-pressed="true"] .opt-desc { color: var(--accent); opacity: 0.8; }
+
+  .toggle {
+    position: relative; width: 44px; height: 26px; flex-shrink: 0;
+    background: var(--bg-soft); border-radius: 999px; border: none;
+    transition: background-color .2s ease;
+  }
+  .toggle::after {
+    content: ''; position: absolute; top: 3px; left: 3px;
+    width: 20px; height: 20px; border-radius: 50%;
+    background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    transition: transform .2s ease;
+  }
+  .toggle[aria-pressed="true"] { background: var(--accent); }
+  .toggle[aria-pressed="true"]::after { transform: translateX(18px); }
+
+  .primary-btn {
+    width: 100%; padding: 12px; margin-top: 14px;
+    background: var(--accent); color: #fff; border: none;
+    border-radius: 12px; font-size: 1rem; font-weight: 600;
+  }
+  .primary-btn:hover { filter: brightness(1.05); }
+  .secondary-btn {
+    width: 100%; padding: 10px; margin-top: 8px;
+    background: var(--bg-soft); color: var(--ink); border: none;
+    border-radius: 12px; font-size: 0.95rem;
+  }
+
+  .toast {
+    position: fixed; left: 50%; bottom: calc(env(safe-area-inset-bottom, 0px) + 24px);
+    transform: translateX(-50%) translateY(20px);
+    background: var(--ink); color: var(--bg);
+    padding: 10px 16px; border-radius: 999px;
+    font-size: 0.9rem;
+    opacity: 0; pointer-events: none;
+    transition: opacity .25s ease, transform .25s ease;
+    z-index: 60;
+    max-width: 90vw; text-align: center;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  .win-stars {
+    text-align: center; padding: 8px 0 4px;
+    font-size: 1.2rem; color: var(--accent); letter-spacing: 4px;
+  }
+
+  /* === Mobile-Anpassungen ======================================= */
+  @media (max-width: 480px) {
+    .app { padding: 8px 10px calc(env(safe-area-inset-bottom, 0px) + 10px); gap: 8px; }
+    .board-wrap { padding: 8px; }
+    .actions button { font-size: 0.72rem; }
+    .pad button { min-height: 50px; font-size: 1.4rem; }
+    .pad { gap: 4px; }
+    .actions { gap: 4px; }
+  }
+  @media (min-width: 700px) {
+    .pad button { min-height: 64px; font-size: 1.8rem; }
+  }
+</style>
+</head>
+<body>
+<div class="app" id="app">
+
+  <header class="top">
+    <div class="title">Sudoku <small id="variantLabel">Klassisch</small></div>
+    <button class="icon-btn" id="newBtn" title="Neues Spiel" aria-label="Neues Spiel">
+      <svg viewBox="0 0 24 24"><path d="M4 12a8 8 0 0 1 14-5.3L20 5v5h-5"/><path d="M20 12a8 8 0 0 1-14 5.3L4 19v-5h5"/></svg>
+    </button>
+    <button class="icon-btn" id="themeBtn" title="Heller/Dunkler Modus" aria-label="Heller/Dunkler Modus">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+    </button>
+    <button class="icon-btn" id="settingsBtn" title="Einstellungen" aria-label="Einstellungen">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    </button>
+  </header>
+
+  <div class="status">
+    <div class="group">
+      <span id="diffLabel">Mittel</span>
+      <span id="errLabel" hidden>Fehler: <strong id="errCount">0</strong></span>
+    </div>
+    <div class="group">
+      <span id="timer" hidden>0:00</span>
+      <button class="pause-btn" id="pauseBtn" hidden title="Pause" aria-label="Pause">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <div class="board-wrap">
+    <div class="board size-9" id="board"></div>
+    <div class="pause-veil" id="pauseVeil" hidden>
+      <button id="resumeBtn">Fortsetzen</button>
+    </div>
+  </div>
+
+  <div class="actions">
+    <button id="undoBtn" title="Rückgängig">
+      <svg viewBox="0 0 24 24"><path d="M9 14l-4-4 4-4"/><path d="M5 10h9a5 5 0 0 1 0 10h-2"/></svg>
+      <span>Zurück</span>
+    </button>
+    <button id="eraseBtn" title="Löschen">
+      <svg viewBox="0 0 24 24"><path d="M3 17l6-6 8 8H9z"/><path d="M9 11l6-6 6 6-6 6"/></svg>
+      <span>Löschen</span>
+    </button>
+    <button id="noteBtn" title="Notizen-Modus" aria-pressed="false">
+      <svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4z"/></svg>
+      <span>Notiz</span>
+    </button>
+    <button id="hintBtn" title="Tipp">
+      <svg viewBox="0 0 24 24"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 0 0-4 12.7c.7.5 1 1.3 1 2.1V18h6v-1.2c0-.8.3-1.6 1-2.1A7 7 0 0 0 12 2z"/></svg>
+      <span>Tipp</span>
+    </button>
+    <button id="checkBtn" title="Prüfen">
+      <svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>
+      <span>Prüfen</span>
+    </button>
+  </div>
+
+  <div class="pad size-9" id="pad"></div>
+
+</div>
+
+<!-- ====== Neues-Spiel-Modal ====== -->
+<div class="modal-bg" id="newModal">
+  <div class="modal">
+    <button class="close-btn" data-close="newModal" aria-label="Schließen">✕</button>
+    <h2>Neues Spiel</h2>
+    <h3>Variante</h3>
+    <div class="opt-grid" id="variantOpts"></div>
+    <h3>Schwierigkeit</h3>
+    <div class="opt-grid" id="diffOpts"></div>
+    <button class="primary-btn" id="startBtn">Spiel starten</button>
+    <button class="secondary-btn" id="resumeOldBtn" hidden>Letztes Spiel fortsetzen</button>
+  </div>
+</div>
+
+<!-- ====== Einstellungen-Modal ====== -->
+<div class="modal-bg" id="settingsModal">
+  <div class="modal">
+    <button class="close-btn" data-close="settingsModal" aria-label="Schließen">✕</button>
+    <h2>Einstellungen</h2>
+
+    <div class="row"><label for="t-timer">Stoppuhr anzeigen</label><button class="toggle" id="t-timer" data-set="showTimer" aria-pressed="false"></button></div>
+    <div class="row"><label for="t-errors">Fehler zählen</label><button class="toggle" id="t-errors" data-set="countErrors" aria-pressed="false"></button></div>
+    <div class="row"><label for="t-mark">Falsche Eingabe sofort markieren</label><button class="toggle" id="t-mark" data-set="markErrors" aria-pressed="true"></button></div>
+    <div class="row"><label for="t-same">Gleiche Zahlen hervorheben</label><button class="toggle" id="t-same" data-set="highlightSame" aria-pressed="true"></button></div>
+    <div class="row"><label for="t-area">Reihe/Spalte/Block hervorheben</label><button class="toggle" id="t-area" data-set="highlightArea" aria-pressed="true"></button></div>
+    <div class="row"><label for="t-auto">Notizen automatisch löschen</label><button class="toggle" id="t-auto" data-set="autoNotes" aria-pressed="true"></button></div>
+    <div class="row"><label for="t-vibrate">Leichte Vibration (Mobil)</label><button class="toggle" id="t-vibrate" data-set="vibrate" aria-pressed="false"></button></div>
+
+    <h3>Anzeige</h3>
+    <div class="row"><label>Schriftgröße</label>
+      <div style="display:flex; gap:6px;">
+        <button class="toggle" id="size-s" data-size="s" style="width:36px;height:32px;border-radius:8px;background:var(--bg-soft);"><span style="font-size:11px;color:var(--ink)">A</span></button>
+        <button class="toggle" id="size-m" data-size="m" style="width:36px;height:32px;border-radius:8px;background:var(--bg-soft);"><span style="font-size:14px;color:var(--ink)">A</span></button>
+        <button class="toggle" id="size-l" data-size="l" style="width:36px;height:32px;border-radius:8px;background:var(--bg-soft);"><span style="font-size:18px;color:var(--ink)">A</span></button>
+      </div>
+    </div>
+
+    <button class="secondary-btn" id="resetStatsBtn">Statistik zurücksetzen</button>
+  </div>
+</div>
+
+<!-- ====== Gewonnen-Modal ====== -->
+<div class="modal-bg" id="winModal">
+  <div class="modal">
+    <h2 style="text-align:center;">Geschafft! 🌿</h2>
+    <div class="win-stars">★ ★ ★</div>
+    <p style="text-align:center; color: var(--ink-soft); margin: 8px 0 16px;">
+      <span id="winSummary">Klassisch · Mittel · 12:34</span>
+    </p>
+    <button class="primary-btn" id="winNewBtn">Noch ein Spiel</button>
+    <button class="secondary-btn" data-close="winModal">Schließen</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+'use strict';
+/* =========================================================================
+ * SUDOKU — RUHIG & KLAR
+ * Vanilla JS, eine Datei. Sechs Varianten ohne Killer.
+ * ========================================================================= */
+
+/* ---------- Hilfen ---------- */
+const $  = (s, r=document) => r.querySelector(s);
+const $$ = (s, r=document) => Array.from(r.querySelectorAll(s));
+const range = (n) => Array.from({length:n}, (_,i)=>i);
+const shuffle = (a) => { for (let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];} return a; };
+const clone = (a) => a.map(r => r.slice());
+
+/* ---------- Varianten-Definitionen ---------- */
+const VARIANTS = {
+  classic: {
+    name: 'Klassisch',
+    desc: '9×9, Standardregeln',
+    size: 9, box: [3,3],
+    extras: [], diag: false, even: false,
+  },
+  mini: {
+    name: 'Mini 6×6',
+    desc: 'Sanfter Einstieg',
+    size: 6, box: [2,3],
+    extras: [], diag: false, even: false,
+  },
+  diagonal: {
+    name: 'X-Sudoku',
+    desc: 'Diagonalen müssen 1–9 enthalten',
+    size: 9, box: [3,3],
+    extras: [], diag: true, even: false,
+  },
+  evenodd: {
+    name: 'Gerade/Ungerade',
+    desc: 'Gefärbte Felder = gerade Zahl',
+    size: 9, box: [3,3],
+    extras: [], diag: false, even: true,
+  },
+  hyper: {
+    name: 'Hyper',
+    desc: 'Vier zusätzliche Regionen',
+    size: 9, box: [3,3],
+    extras: 'hyper', diag: false, even: false,
+  },
+  color: {
+    name: 'Farb-Sudoku',
+    desc: 'Klassisch — Zahlen als Farben',
+    size: 9, box: [3,3],
+    extras: [], diag: false, even: false,
+    colorMode: true,
+  },
+};
+
+const DIFFICULTIES = {
+  easy:   { name: 'Sehr leicht', clues9: 50, clues6: 24, attempts: 80 },
+  medium: { name: 'Mittel',      clues9: 36, clues6: 22, attempts: 120 },
+  hard:   { name: 'Schwer',      clues9: 30, clues6: 19, attempts: 200 },
+  expert: { name: 'Sehr schwer', clues9: 26, clues6: 17, attempts: 300 },
+};
+
+/* Farben für Farb-Sudoku */
+const COLOR_PALETTE = [
+  '#c45f5f', '#dca35a', '#dccb5a', '#7fae6c',
+  '#5e9aa8', '#4a6fa5', '#7a6dab', '#b76aa8', '#7a7263'
+];
+
+/* ---------- Engine: Generator + Solver ---------- */
+class Engine {
+  constructor(variant) {
+    this.v = VARIANTS[variant];
+    this.N = this.v.size;
+    this.box = this.v.box; // [boxRows, boxCols]
+    this.regions = this._buildRegions();
+  }
+  _buildRegions() {
+    const N = this.N, [br, bc] = this.box;
+    const regs = [];
+    // Zeilen
+    for (let r=0;r<N;r++) {
+      regs.push(range(N).map(c => [r,c]));
+    }
+    // Spalten
+    for (let c=0;c<N;c++) {
+      regs.push(range(N).map(r => [r,c]));
+    }
+    // Boxen
+    for (let R=0; R<N; R+=br) {
+      for (let C=0; C<N; C+=bc) {
+        const reg = [];
+        for (let dr=0; dr<br; dr++) for (let dc=0; dc<bc; dc++) reg.push([R+dr, C+dc]);
+        regs.push(reg);
+      }
+    }
+    if (this.v.diag) {
+      regs.push(range(N).map(i => [i,i]));
+      regs.push(range(N).map(i => [i, N-1-i]));
+    }
+    if (this.v.extras === 'hyper' && N === 9) {
+      // 4 Extra-Regionen bei (1,1),(1,5),(5,1),(5,5) jeweils 3x3
+      [[1,1],[1,5],[5,1],[5,5]].forEach(([R,C]) => {
+        const reg = [];
+        for (let dr=0;dr<3;dr++) for (let dc=0;dc<3;dc++) reg.push([R+dr, C+dc]);
+        regs.push(reg);
+      });
+    }
+    return regs;
+  }
+  // peers: pro Zelle Liste betroffener Zellen
+  _peers(r, c) {
+    const peers = new Set();
+    for (const reg of this.regions) {
+      const inReg = reg.some(([rr,cc]) => rr===r && cc===c);
+      if (!inReg) continue;
+      for (const [rr,cc] of reg) {
+        if (rr===r && cc===c) continue;
+        peers.add(rr*this.N + cc);
+      }
+    }
+    return peers;
+  }
+  isValid(grid, r, c, val) {
+    if (val === 0) return true;
+    for (const reg of this.regions) {
+      let inReg = false;
+      for (const [rr,cc] of reg) {
+        if (rr===r && cc===c) { inReg = true; break; }
+      }
+      if (!inReg) continue;
+      for (const [rr,cc] of reg) {
+        if (rr===r && cc===c) continue;
+        if (grid[rr][cc] === val) return false;
+      }
+    }
+    return true;
+  }
+  // erzeuge eine vollständige, gültige Lösung (Backtracking, randomisiert)
+  generateSolution() {
+    const N = this.N;
+    const g = Array.from({length:N}, () => new Array(N).fill(0));
+    const tryFill = (idx) => {
+      if (idx === N*N) return true;
+      const r = Math.floor(idx / N), c = idx % N;
+      const nums = shuffle(range(N).map(i => i+1));
+      for (const n of nums) {
+        if (this.isValid(g, r, c, n)) {
+          g[r][c] = n;
+          if (tryFill(idx+1)) return true;
+          g[r][c] = 0;
+        }
+      }
+      return false;
+    };
+    if (!tryFill(0)) {
+      // sehr selten: nochmal probieren
+      return this.generateSolution();
+    }
+    return g;
+  }
+  // zähle Lösungen, breche bei >1 ab
+  countSolutions(grid, limit=2) {
+    const N = this.N;
+    const g = clone(grid);
+    let count = 0;
+    const solve = () => {
+      // wähle Zelle mit wenigsten Möglichkeiten (MRV heuristik)
+      let best = -1, bestN = N+1, bestCands = null;
+      for (let r=0;r<N;r++) for (let c=0;c<N;c++) {
+        if (g[r][c] !== 0) continue;
+        const cands = [];
+        for (let n=1;n<=N;n++) if (this.isValid(g,r,c,n)) cands.push(n);
+        if (cands.length < bestN) {
+          bestN = cands.length; best = r*N+c; bestCands = cands;
+          if (bestN === 0) return;
+          if (bestN === 1) break;
+        }
+      }
+      if (best === -1) { count++; return; }
+      const r = Math.floor(best/N), c = best%N;
+      for (const n of bestCands) {
+        g[r][c] = n;
+        solve();
+        if (count >= limit) { g[r][c] = 0; return; }
+        g[r][c] = 0;
+      }
+    };
+    solve();
+    return count;
+  }
+  // Puzzle aus Lösung: entferne Zellen solange Lösung eindeutig bleibt
+  generatePuzzle(difficulty) {
+    const sol = this.generateSolution();
+    const N = this.N;
+    const targetClues = N === 9 ? DIFFICULTIES[difficulty].clues9 : DIFFICULTIES[difficulty].clues6;
+    const maxAttempts = DIFFICULTIES[difficulty].attempts;
+    const puzzle = clone(sol);
+    let clues = N*N;
+    // Liste aller Positionen, in zufälliger Reihenfolge
+    const positions = shuffle(range(N*N));
+    let tried = 0;
+    for (const pos of positions) {
+      if (clues <= targetClues || tried >= maxAttempts) break;
+      const r = Math.floor(pos/N), c = pos%N;
+      if (puzzle[r][c] === 0) continue;
+      const backup = puzzle[r][c];
+      puzzle[r][c] = 0;
+      tried++;
+      // Eindeutigkeit prüfen
+      const n = this.countSolutions(puzzle, 2);
+      if (n !== 1) {
+        puzzle[r][c] = backup;
+      } else {
+        clues--;
+      }
+    }
+    return { puzzle, solution: sol, clues };
+  }
+  // Hinweis: finde eine Zelle, die direkt einsetzbar ist (Naked Single)
+  findHint(board, solution) {
+    const N = this.N;
+    const empties = [];
+    for (let r=0;r<N;r++) for (let c=0;c<N;c++) if (board[r][c] === 0) empties.push([r,c]);
+    if (empties.length === 0) return null;
+    // Zuerst: Naked Single
+    for (const [r,c] of shuffle(empties)) {
+      const cands = [];
+      for (let n=1;n<=N;n++) if (this.isValid(board, r, c, n)) cands.push(n);
+      if (cands.length === 1) return { r, c, val: cands[0], reason: 'single' };
+    }
+    // Fallback: zufällige Zelle, Wert aus Lösung
+    const [r,c] = empties[Math.floor(Math.random()*empties.length)];
+    return { r, c, val: solution[r][c], reason: 'reveal' };
+  }
+}
+
+/* ---------- Speicher ---------- */
+const Storage = {
+  KEY: 'sudoku.de.v1',
+  load() {
+    try { return JSON.parse(localStorage.getItem(this.KEY) || '{}'); }
+    catch { return {}; }
+  },
+  save(data) {
+    try { localStorage.setItem(this.KEY, JSON.stringify(data)); }
+    catch {}
+  },
+  patch(obj) {
+    const d = this.load();
+    Object.assign(d, obj);
+    this.save(d);
+  }
+};
+
+/* ---------- Standardeinstellungen ---------- */
+const DEFAULT_SETTINGS = {
+  variant: 'classic',
+  difficulty: 'medium',
+  theme: null, // 'light' | 'dark' | null = system
+  showTimer: true,
+  countErrors: true,
+  markErrors: true,
+  highlightSame: true,
+  highlightArea: true,
+  autoNotes: true,
+  vibrate: false,
+  fontSize: 'm',
+};
+
+let SETTINGS = Object.assign({}, DEFAULT_SETTINGS, Storage.load().settings || {});
+let STATE = null; // aktuelles Spiel
+
+function saveSettings() { Storage.patch({ settings: SETTINGS }); }
+function saveGame() { if (STATE) Storage.patch({ ['game_'+STATE.variant]: serializeGame() }); }
+
+function serializeGame() {
+  return {
+    variant: STATE.variant,
+    difficulty: STATE.difficulty,
+    puzzle: STATE.puzzle,
+    solution: STATE.solution,
+    board: STATE.board,
+    notes: STATE.notes,
+    elapsed: STATE.elapsed,
+    errors: STATE.errors,
+    completed: STATE.completed,
+  };
+}
+function loadGame(variant) {
+  const d = Storage.load();
+  return d['game_'+variant] || null;
+}
+
+/* ---------- Spielzustand ---------- */
+function newGame(variant, difficulty) {
+  const eng = new Engine(variant);
+  showToast('Generiere Spiel…');
+  // asynchron damit UI rendert
+  return new Promise(resolve => {
+    setTimeout(() => {
+      const { puzzle, solution } = eng.generatePuzzle(difficulty);
+      STATE = {
+        variant, difficulty,
+        engine: eng,
+        puzzle: clone(puzzle),
+        solution: clone(solution),
+        board: clone(puzzle),
+        notes: Array.from({length: eng.N}, () => Array.from({length: eng.N}, () => [])),
+        history: [],
+        selected: null,
+        noteMode: false,
+        elapsed: 0,
+        errors: 0,
+        completed: false,
+        startTs: Date.now(),
+      };
+      saveGame();
+      resolve();
+    }, 30);
+  });
+}
+function continueGame(saved) {
+  const eng = new Engine(saved.variant);
+  STATE = {
+    variant: saved.variant,
+    difficulty: saved.difficulty,
+    engine: eng,
+    puzzle: clone(saved.puzzle),
+    solution: clone(saved.solution),
+    board: clone(saved.board),
+    notes: saved.notes ? saved.notes.map(r => r.map(s => s.slice())) : Array.from({length: eng.N}, () => Array.from({length: eng.N}, () => [])),
+    history: [],
+    selected: null,
+    noteMode: false,
+    elapsed: saved.elapsed || 0,
+    errors: saved.errors || 0,
+    completed: saved.completed || false,
+    startTs: Date.now(),
+  };
+}
+
+/* ---------- Rendering ---------- */
+const boardEl = $('#board');
+const padEl = $('#pad');
+const toastEl = $('#toast');
+
+function renderAll() {
+  if (!STATE) return;
+  const v = VARIANTS[STATE.variant];
+  $('#variantLabel').textContent = v.name;
+  $('#diffLabel').textContent = DIFFICULTIES[STATE.difficulty].name;
+  applyTheme();
+  applyFontSize();
+  renderStatus();
+  renderBoard();
+  renderPad();
+  renderActionState();
+}
+
+function renderStatus() {
+  $('#timer').hidden = !SETTINGS.showTimer;
+  $('#pauseBtn').hidden = !SETTINGS.showTimer;
+  $('#errLabel').hidden = !SETTINGS.countErrors;
+  $('#errCount').textContent = STATE.errors;
+  $('#timer').textContent = fmtTime(STATE.elapsed);
+}
+
+function fmtTime(s) {
+  const m = Math.floor(s/60), ss = s%60;
+  return m + ':' + (ss<10?'0':'') + ss;
+}
+
+function renderBoard() {
+  const v = VARIANTS[STATE.variant];
+  const N = STATE.engine.N;
+  const [br, bc] = v.box;
+  boardEl.classList.toggle('size-9', N === 9);
+  boardEl.classList.toggle('size-6', N === 6);
+  boardEl.classList.toggle('diag', !!v.diag);
+  boardEl.innerHTML = '';
+
+  const sel = STATE.selected;
+  const selVal = sel ? STATE.board[sel.r][sel.c] : 0;
+  // Peer-Set für Highlight
+  let peers = null;
+  if (sel) peers = STATE.engine._peers(sel.r, sel.c);
+
+  // Konflikte markieren: Zellen, deren Wert gegen Regel verstößt
+  const conflicts = computeConflicts();
+
+  for (let r=0; r<N; r++) {
+    for (let c=0; c<N; c++) {
+      const cell = document.createElement('div');
+      cell.className = 'cell';
+      cell.dataset.r = r;
+      cell.dataset.c = c;
+
+      // dicke Boxlinien
+      if ((r+1) % br === 0 && r !== N-1) cell.classList.add('r-bold');
+      if ((c+1) % bc === 0 && c !== N-1) cell.classList.add('c-bold');
+
+      // Hintergründe je Variante
+      if (v.even && (r+c) % 2 === 0 && false) {} // platzhalter; even-bg bestimmen wir aus Lösung
+      if (v.even) {
+        // gerade Felder = Zellen, deren Lösung gerade ist
+        if (STATE.solution[r][c] % 2 === 0) cell.classList.add('even-bg');
+      }
+      if (v.diag && (r === c || r + c === N-1)) cell.classList.add('diag-bg');
+      if (v.extras === 'hyper') {
+        const inHyper = (
+          (r>=1 && r<=3 && c>=1 && c<=3) ||
+          (r>=1 && r<=3 && c>=5 && c<=7) ||
+          (r>=5 && r<=7 && c>=1 && c<=3) ||
+          (r>=5 && r<=7 && c>=5 && c<=7)
+        );
+        if (inHyper) cell.classList.add('hyper-bg');
+      }
+
+      // Inhalt
+      const val = STATE.board[r][c];
+      const isGiven = STATE.puzzle[r][c] !== 0;
+      if (val !== 0) {
+        const num = document.createElement('div');
+        num.className = 'num';
+        if (v.colorMode) {
+          // Farbsudoku: Punkt in Farbe, Zahl klein
+          num.style.display = 'flex';
+          num.style.flexDirection = 'column';
+          num.style.alignItems = 'center';
+          num.style.gap = '2px';
+          const dot = document.createElement('div');
+          dot.className = 'color-dot';
+          dot.style.background = COLOR_PALETTE[val-1];
+          num.appendChild(dot);
+        } else {
+          num.textContent = val;
+        }
+        cell.appendChild(num);
+        if (!isGiven) cell.classList.add('user');
+      } else {
+        // Notizen
+        const notes = STATE.notes[r][c];
+        if (notes && notes.length) {
+          const nbox = document.createElement('div');
+          nbox.className = 'notes';
+          for (let n=1; n<=N; n++) {
+            const sp = document.createElement('span');
+            if (notes.includes(n)) {
+              if (v.colorMode) {
+                const d = document.createElement('span');
+                d.className = 'color-note';
+                d.style.background = COLOR_PALETTE[n-1];
+                sp.appendChild(d);
+              } else {
+                sp.textContent = n;
+              }
+              if (selVal === n && SETTINGS.highlightSame) sp.classList.add('hi');
+            }
+            nbox.appendChild(sp);
+          }
+          cell.appendChild(nbox);
+        }
+      }
+
+      // Highlights
+      if (sel) {
+        if (sel.r === r && sel.c === c) cell.classList.add('selected');
+        else if (SETTINGS.highlightArea && peers.has(r*N+c)) cell.classList.add('hi-area');
+        if (SETTINGS.highlightSame && selVal !== 0 && val === selVal) cell.classList.add('hi-same');
+      }
+
+      if (conflicts.has(r*N+c)) cell.classList.add('conflict');
+
+      boardEl.appendChild(cell);
+    }
+  }
+
+  // Pause-Schleier
+  boardEl.classList.toggle('paused', !!STATE.paused);
+  $('#pauseVeil').hidden = !STATE.paused;
+}
+
+function computeConflicts() {
+  const set = new Set();
+  if (!SETTINGS.markErrors) return set;
+  const N = STATE.engine.N;
+  for (let r=0;r<N;r++) for (let c=0;c<N;c++) {
+    const v = STATE.board[r][c];
+    if (v === 0) continue;
+    if (STATE.puzzle[r][c] !== 0) continue; // gegebene Zahlen nie Konflikt
+    if (v !== STATE.solution[r][c]) set.add(r*N+c);
+  }
+  return set;
+}
+
+function renderPad() {
+  const N = STATE.engine.N;
+  const v = VARIANTS[STATE.variant];
+  padEl.classList.toggle('size-9', N === 9);
+  padEl.classList.toggle('size-6', N === 6);
+  padEl.innerHTML = '';
+  // Anzahl pro Zahl zählen
+  const counts = new Array(N+1).fill(0);
+  for (let r=0;r<N;r++) for (let c=0;c<N;c++) if (STATE.board[r][c]) counts[STATE.board[r][c]]++;
+  for (let n=1; n<=N; n++) {
+    const b = document.createElement('button');
+    b.dataset.n = n;
+    if (v.colorMode) {
+      b.innerHTML = '';
+      const dot = document.createElement('div');
+      dot.className = 'color-pad-dot';
+      dot.style.background = COLOR_PALETTE[n-1];
+      b.appendChild(dot);
+    } else {
+      b.textContent = n;
+    }
+    if (counts[n] >= N) b.classList.add('done');
+    else {
+      const c = document.createElement('div');
+      c.className = 'count';
+      c.textContent = (N - counts[n]);
+      b.appendChild(c);
+    }
+    padEl.appendChild(b);
+  }
+}
+
+function renderActionState() {
+  $('#noteBtn').setAttribute('aria-pressed', STATE.noteMode ? 'true' : 'false');
+  $('#undoBtn').disabled = STATE.history.length === 0;
+}
+
+/* ---------- Aktionen ---------- */
+function selectCell(r, c) {
+  STATE.selected = { r, c };
+  renderBoard();
+  renderPad();
+}
+
+function inputNumber(n) {
+  if (!STATE.selected || STATE.completed || STATE.paused) return;
+  const { r, c } = STATE.selected;
+  if (STATE.puzzle[r][c] !== 0) { vibrate(20); return; }
+  const N = STATE.engine.N;
+
+  pushHistory();
+
+  if (STATE.noteMode) {
+    if (STATE.board[r][c] !== 0) STATE.board[r][c] = 0;
+    const arr = STATE.notes[r][c];
+    const idx = arr.indexOf(n);
+    if (idx >= 0) arr.splice(idx, 1);
+    else { arr.push(n); arr.sort((a,b)=>a-b); }
+  } else {
+    if (STATE.board[r][c] === n) {
+      STATE.board[r][c] = 0;
+    } else {
+      STATE.board[r][c] = n;
+      STATE.notes[r][c] = [];
+      // Falscher Wert?
+      if (STATE.solution[r][c] !== n) {
+        if (SETTINGS.countErrors) STATE.errors++;
+        vibrate(40);
+      } else {
+        // automatische Notizen entfernen
+        if (SETTINGS.autoNotes) eraseNotesAround(r, c, n);
+      }
+    }
+  }
+  saveGame();
+  renderStatus();
+  renderBoard();
+  renderPad();
+  renderActionState();
+  checkWin();
+}
+
+function eraseNotesAround(r, c, n) {
+  const peers = STATE.engine._peers(r, c);
+  peers.forEach(p => {
+    const pr = Math.floor(p / STATE.engine.N), pc = p % STATE.engine.N;
+    const arr = STATE.notes[pr][pc];
+    const i = arr.indexOf(n);
+    if (i >= 0) arr.splice(i, 1);
+  });
+}
+
+function eraseCell() {
+  if (!STATE.selected || STATE.completed || STATE.paused) return;
+  const { r, c } = STATE.selected;
+  if (STATE.puzzle[r][c] !== 0) return;
+  if (STATE.board[r][c] === 0 && STATE.notes[r][c].length === 0) return;
+  pushHistory();
+  STATE.board[r][c] = 0;
+  STATE.notes[r][c] = [];
+  saveGame();
+  renderBoard();
+  renderPad();
+  renderActionState();
+}
+
+function pushHistory() {
+  STATE.history.push({
+    board: clone(STATE.board),
+    notes: STATE.notes.map(r => r.map(s => s.slice())),
+    errors: STATE.errors,
+    selected: STATE.selected ? { ...STATE.selected } : null,
+  });
+  if (STATE.history.length > 200) STATE.history.shift();
+}
+function undo() {
+  if (!STATE.history.length || STATE.completed || STATE.paused) return;
+  const h = STATE.history.pop();
+  STATE.board = h.board;
+  STATE.notes = h.notes;
+  STATE.errors = h.errors;
+  STATE.selected = h.selected;
+  saveGame();
+  renderStatus();
+  renderBoard();
+  renderPad();
+  renderActionState();
+}
+
+function hint() {
+  if (!STATE || STATE.completed || STATE.paused) return;
+  const h = STATE.engine.findHint(STATE.board, STATE.solution);
+  if (!h) return;
+  pushHistory();
+  STATE.selected = { r: h.r, c: h.c };
+  STATE.board[h.r][h.c] = h.val;
+  STATE.notes[h.r][h.c] = [];
+  if (SETTINGS.autoNotes) eraseNotesAround(h.r, h.c, h.val);
+  // Hinweise werden oft als kleine "Strafe" gezählt — wir tun das nicht, halten sanft.
+  showToast(h.reason === 'single' ? 'Tipp: nur diese Zahl ist möglich.' : 'Tipp eingesetzt.');
+  saveGame();
+  renderStatus();
+  renderBoard();
+  renderPad();
+  renderActionState();
+  checkWin();
+}
+
+function checkBoard() {
+  if (!STATE) return;
+  const N = STATE.engine.N;
+  let wrong = 0, empty = 0;
+  for (let r=0;r<N;r++) for (let c=0;c<N;c++) {
+    if (STATE.board[r][c] === 0) empty++;
+    else if (STATE.board[r][c] !== STATE.solution[r][c]) wrong++;
+  }
+  if (wrong === 0 && empty === 0) return; // win wird separat gefangen
+  if (wrong === 0) showToast(`Bisher alles richtig. Noch ${empty} Felder.`);
+  else showToast(`${wrong} Fehler im Brett.`);
+}
+
+function checkWin() {
+  if (!STATE) return;
+  const N = STATE.engine.N;
+  for (let r=0;r<N;r++) for (let c=0;c<N;c++) {
+    if (STATE.board[r][c] !== STATE.solution[r][c]) return;
+  }
+  STATE.completed = true;
+  saveGame();
+  // gewonnen!
+  setTimeout(() => {
+    $('#winSummary').textContent = `${VARIANTS[STATE.variant].name} · ${DIFFICULTIES[STATE.difficulty].name} · ${fmtTime(STATE.elapsed)}`;
+    openModal('winModal');
+  }, 200);
+}
+
+/* ---------- Pause / Timer ---------- */
+let timerHandle = null;
+function startTimer() {
+  stopTimer();
+  if (!SETTINGS.showTimer) return;
+  timerHandle = setInterval(() => {
+    if (!STATE || STATE.completed || STATE.paused || document.hidden) return;
+    STATE.elapsed++;
+    $('#timer').textContent = fmtTime(STATE.elapsed);
+    if (STATE.elapsed % 10 === 0) saveGame();
+  }, 1000);
+}
+function stopTimer() { if (timerHandle) clearInterval(timerHandle); timerHandle = null; }
+function togglePause() {
+  if (!STATE || STATE.completed) return;
+  STATE.paused = !STATE.paused;
+  renderBoard();
+}
+
+/* ---------- Theme & Schrift ---------- */
+function applyTheme() {
+  let t = SETTINGS.theme;
+  if (!t) {
+    t = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  }
+  document.documentElement.dataset.theme = t;
+  document.querySelector('meta[name="theme-color"]').content = t === 'dark' ? '#1d232c' : '#3b5a7a';
+}
+function toggleTheme() {
+  const cur = document.documentElement.dataset.theme;
+  SETTINGS.theme = cur === 'dark' ? 'light' : 'dark';
+  saveSettings();
+  applyTheme();
+}
+function applyFontSize() {
+  const sizes = { s: '14px', m: '16px', l: '18px' };
+  document.body.style.fontSize = sizes[SETTINGS.fontSize] || '16px';
+  $$('#settingsModal [data-size]').forEach(b => {
+    b.setAttribute('aria-pressed', b.dataset.size === SETTINGS.fontSize ? 'true' : 'false');
+  });
+}
+
+/* ---------- Toast ---------- */
+let toastTimer = null;
+function showToast(msg) {
+  toastEl.textContent = msg;
+  toastEl.classList.add('show');
+  if (toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toastEl.classList.remove('show'), 2200);
+}
+
+/* ---------- Vibration ---------- */
+function vibrate(ms) {
+  if (SETTINGS.vibrate && navigator.vibrate) navigator.vibrate(ms);
+}
+
+/* ---------- Modale ---------- */
+function openModal(id) { $('#'+id).classList.add('open'); }
+function closeModal(id) { $('#'+id).classList.remove('open'); }
+
+/* Variant- und Schwierigkeits-Optionen aufbauen */
+function buildNewGameOptions() {
+  const vBox = $('#variantOpts');
+  vBox.innerHTML = '';
+  Object.entries(VARIANTS).forEach(([key, v]) => {
+    const b = document.createElement('button');
+    b.dataset.variant = key;
+    b.innerHTML = `<span class="opt-title">${v.name}</span><span class="opt-desc">${v.desc}</span>`;
+    b.setAttribute('aria-pressed', SETTINGS.variant === key ? 'true' : 'false');
+    b.addEventListener('click', () => {
+      SETTINGS.variant = key;
+      $$('#variantOpts button').forEach(x => x.setAttribute('aria-pressed', 'false'));
+      b.setAttribute('aria-pressed', 'true');
+    });
+    vBox.appendChild(b);
+  });
+  const dBox = $('#diffOpts');
+  dBox.innerHTML = '';
+  Object.entries(DIFFICULTIES).forEach(([key, d]) => {
+    const b = document.createElement('button');
+    b.dataset.diff = key;
+    b.innerHTML = `<span class="opt-title">${d.name}</span>`;
+    b.setAttribute('aria-pressed', SETTINGS.difficulty === key ? 'true' : 'false');
+    b.addEventListener('click', () => {
+      SETTINGS.difficulty = key;
+      $$('#diffOpts button').forEach(x => x.setAttribute('aria-pressed', 'false'));
+      b.setAttribute('aria-pressed', 'true');
+    });
+    dBox.appendChild(b);
+  });
+  // letzte Partie?
+  const last = loadGame(SETTINGS.variant);
+  const btn = $('#resumeOldBtn');
+  if (last && !last.completed) {
+    btn.hidden = false;
+    btn.textContent = `Letzte Partie fortsetzen (${VARIANTS[last.variant].name}, ${DIFFICULTIES[last.difficulty].name}, ${fmtTime(last.elapsed)})`;
+    btn.onclick = async () => {
+      continueGame(last);
+      closeModal('newModal');
+      renderAll();
+      startTimer();
+    };
+  } else {
+    btn.hidden = true;
+  }
+}
+
+/* Settings UI */
+function bindSettingsToggles() {
+  $$('#settingsModal [data-set]').forEach(btn => {
+    const k = btn.dataset.set;
+    btn.setAttribute('aria-pressed', SETTINGS[k] ? 'true' : 'false');
+    btn.addEventListener('click', () => {
+      SETTINGS[k] = !SETTINGS[k];
+      btn.setAttribute('aria-pressed', SETTINGS[k] ? 'true' : 'false');
+      saveSettings();
+      renderAll();
+      if (k === 'showTimer') startTimer();
+    });
+  });
+  $$('#settingsModal [data-size]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      SETTINGS.fontSize = btn.dataset.size;
+      saveSettings();
+      applyFontSize();
+    });
+  });
+}
+
+/* ---------- Eingabe-Handling ---------- */
+function bindEvents() {
+  // Brett-Klick (Delegation)
+  boardEl.addEventListener('click', (e) => {
+    const cell = e.target.closest('.cell');
+    if (!cell) return;
+    if (STATE.paused) return;
+    const r = +cell.dataset.r, c = +cell.dataset.c;
+    selectCell(r, c);
+  });
+  // Pad-Klick
+  padEl.addEventListener('click', (e) => {
+    const b = e.target.closest('button');
+    if (!b) return;
+    inputNumber(+b.dataset.n);
+  });
+  // Aktionen
+  $('#undoBtn').addEventListener('click', undo);
+  $('#eraseBtn').addEventListener('click', eraseCell);
+  $('#noteBtn').addEventListener('click', () => {
+    STATE.noteMode = !STATE.noteMode;
+    renderActionState();
+  });
+  $('#hintBtn').addEventListener('click', hint);
+  $('#checkBtn').addEventListener('click', checkBoard);
+
+  // Header
+  $('#newBtn').addEventListener('click', () => { buildNewGameOptions(); openModal('newModal'); });
+  $('#themeBtn').addEventListener('click', toggleTheme);
+  $('#settingsBtn').addEventListener('click', () => openModal('settingsModal'));
+  $('#pauseBtn').addEventListener('click', togglePause);
+  $('#resumeBtn').addEventListener('click', togglePause);
+
+  // Modal-Schließer
+  $$('[data-close]').forEach(b => b.addEventListener('click', () => closeModal(b.dataset.close)));
+  $$('.modal-bg').forEach(bg => bg.addEventListener('click', (e) => {
+    if (e.target === bg) bg.classList.remove('open');
+  }));
+
+  // Neues Spiel starten
+  $('#startBtn').addEventListener('click', async () => {
+    closeModal('newModal');
+    saveSettings();
+    await newGame(SETTINGS.variant, SETTINGS.difficulty);
+    renderAll();
+    startTimer();
+    showToast('Spiel bereit. Viel Spaß!');
+  });
+  $('#winNewBtn').addEventListener('click', () => {
+    closeModal('winModal');
+    buildNewGameOptions();
+    openModal('newModal');
+  });
+  $('#resetStatsBtn').addEventListener('click', () => {
+    if (!confirm('Wirklich alle gespeicherten Spiele löschen?')) return;
+    const keep = { settings: SETTINGS };
+    Storage.save(keep);
+    showToast('Gespeicherte Spiele gelöscht.');
+  });
+
+  // Tastatur (PC)
+  window.addEventListener('keydown', (e) => {
+    if (!STATE) return;
+    if (document.querySelector('.modal-bg.open')) return;
+    if (e.key >= '1' && e.key <= '9') { inputNumber(+e.key); e.preventDefault(); return; }
+    if (e.key === 'Backspace' || e.key === 'Delete' || e.key === '0') { eraseCell(); return; }
+    if (e.key.toLowerCase() === 'n') { STATE.noteMode = !STATE.noteMode; renderActionState(); return; }
+    if (e.key.toLowerCase() === 'z' && (e.ctrlKey || e.metaKey)) { undo(); e.preventDefault(); return; }
+    if (e.key.toLowerCase() === 'h') { hint(); return; }
+    if (!STATE.selected) return;
+    const N = STATE.engine.N;
+    let { r, c } = STATE.selected;
+    if (e.key === 'ArrowUp') r = (r - 1 + N) % N;
+    else if (e.key === 'ArrowDown') r = (r + 1) % N;
+    else if (e.key === 'ArrowLeft') c = (c - 1 + N) % N;
+    else if (e.key === 'ArrowRight') c = (c + 1) % N;
+    else return;
+    e.preventDefault();
+    selectCell(r, c);
+  });
+
+  // System-Theme-Wechsel
+  if (window.matchMedia) {
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+      if (!SETTINGS.theme) applyTheme();
+    });
+  }
+  // Sichtbarkeit (Spielzeit pausieren bei verstecktem Tab)
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) saveGame();
+  });
+}
+
+/* ---------- Bootstrap ---------- */
+async function init() {
+  applyTheme();
+  applyFontSize();
+  bindEvents();
+  bindSettingsToggles();
+
+  // Letztes Spiel laden, sonst Modal öffnen
+  const last = loadGame(SETTINGS.variant);
+  if (last && !last.completed) {
+    continueGame(last);
+    renderAll();
+    startTimer();
+  } else {
+    buildNewGameOptions();
+    openModal('newModal');
+  }
+
+  // PWA-Service-Worker
+  if ('serviceWorker' in navigator) {
+    try { await navigator.serviceWorker.register('sw.js'); } catch (e) {}
+  }
+}
+
+init();
+</script>
+</body>
+</html>

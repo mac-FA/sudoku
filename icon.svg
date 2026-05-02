@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="96" fill="#3b5a7a"/>
+  <g fill="none" stroke="#f4ede0" stroke-width="8" stroke-linecap="round">
+    <rect x="80" y="80" width="352" height="352" rx="16" stroke-width="14"/>
+    <line x1="80"  y1="197" x2="432" y2="197"/>
+    <line x1="80"  y1="315" x2="432" y2="315"/>
+    <line x1="197" y1="80"  x2="197" y2="432"/>
+    <line x1="315" y1="80"  x2="315" y2="432"/>
+    <line x1="80"  y1="138" x2="432" y2="138" stroke-width="3" opacity="0.45"/>
+    <line x1="80"  y1="256" x2="432" y2="256" stroke-width="3" opacity="0.45"/>
+    <line x1="80"  y1="374" x2="432" y2="374" stroke-width="3" opacity="0.45"/>
+    <line x1="138" y1="80"  x2="138" y2="432" stroke-width="3" opacity="0.45"/>
+    <line x1="256" y1="80"  x2="256" y2="432" stroke-width="3" opacity="0.45"/>
+    <line x1="374" y1="80"  x2="374" y2="432" stroke-width="3" opacity="0.45"/>
+  </g>
+  <g fill="#f4ede0" font-family="Georgia, serif" font-size="64" text-anchor="middle">
+    <text x="138" y="120">5</text>
+    <text x="374" y="180">3</text>
+    <text x="256" y="298">7</text>
+    <text x="138" y="416">2</text>
+    <text x="374" y="416">9</text>
+  </g>
+</svg>
