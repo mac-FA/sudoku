@@ -175,6 +175,7 @@
     cursor: pointer;
     transition: background-color .15s ease;
     border: 1px solid var(--line);
+    container-type: inline-size;
   }
   /* dicke Linien werden per JS pro Variante gesetzt */
   .cell.r-bold { border-bottom: 2px solid var(--line-bold); }
@@ -190,7 +191,7 @@
   .cell.conflict .num { color: var(--conflict); }
   .cell.user .num { color: var(--user); }
   .cell .num {
-    font-size: clamp(22px, 6.5vw, 40px);
+    font-size: 60cqw;
     line-height: 1;
     pointer-events: none;
   }
@@ -201,7 +202,7 @@
     color: var(--note);
     font-family: var(--font);
     font-weight: 600;
-    font-size: clamp(11px, 2.6vw, 18px);
+    font-size: 22cqw;
     line-height: 1;
   }
   .cell .notes span {
@@ -232,8 +233,8 @@
   .board.size-9 .cell .notes { grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr); }
   .board.size-6 { grid-template-columns: repeat(6, 1fr); grid-template-rows: repeat(6, 1fr); }
   .board.size-6 .cell .notes { grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(2, 1fr); }
-  .board.size-6 .cell .num { font-size: clamp(28px, 9vw, 52px); }
-  .board.size-6 .cell .notes { font-size: clamp(13px, 3.5vw, 22px); }
+  .board.size-6 .cell .num { font-size: 65cqw; }
+  .board.size-6 .cell .notes { font-size: 26cqw; }
 
   /* Diagonal-Markierung als Overlay (nur für Diagonal-Variante) */
   .board.diag::before, .board.diag::after {
@@ -324,8 +325,8 @@
     border-top: 2px solid var(--ink-soft); transform: rotate(-12deg);
   }
   .pad button .count {
-    position: absolute; bottom: 3px; right: 6px;
-    font-size: 0.65rem; color: var(--ink-soft); font-family: var(--font);
+    position: absolute; bottom: 4px; right: 8px;
+    font-size: 0.85rem; font-weight: 600; color: var(--ink-soft); font-family: var(--font);
   }
 
   /* === Modale =================================================== */
@@ -449,7 +450,7 @@
   .fs-only-desktop { display: none; }
   @media (min-width: 900px) {
     .app {
-      max-width: 1280px;
+      max-width: none;
       gap: 14px;
     }
     .play {
@@ -478,11 +479,8 @@
     .pad.size-6 { grid-template-columns: repeat(3, 1fr); }
     .pad button { min-height: 86px; font-size: 2.4rem; }
     .pad button .color-pad-dot { width: 44px; height: 44px; max-width: 44px; }
+    .pad button .count { font-size: 1rem; bottom: 6px; right: 10px; }
     .pad { gap: 10px; }
-    .cell .num { font-size: clamp(28px, 3.2vw, 44px); }
-    .cell .notes { font-size: clamp(13px, 1.4vw, 20px); }
-    .board.size-6 .cell .num { font-size: clamp(36px, 4.5vw, 60px); }
-    .board.size-6 .cell .notes { font-size: clamp(16px, 2vw, 26px); }
     .fs-only-desktop { display: inline-flex; }
   }
 
