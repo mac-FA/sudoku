@@ -190,7 +190,7 @@
   .cell.conflict .num { color: var(--conflict); }
   .cell.user .num { color: var(--user); }
   .cell .num {
-    font-size: clamp(18px, 6vw, 32px);
+    font-size: clamp(22px, 6.5vw, 40px);
     line-height: 1;
     pointer-events: none;
   }
@@ -200,7 +200,8 @@
     padding: 4%;
     color: var(--note);
     font-family: var(--font);
-    font-size: clamp(8px, 2.2vw, 11px);
+    font-weight: 600;
+    font-size: clamp(11px, 2.6vw, 18px);
     line-height: 1;
   }
   .cell .notes span {
@@ -231,7 +232,8 @@
   .board.size-9 .cell .notes { grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr); }
   .board.size-6 { grid-template-columns: repeat(6, 1fr); grid-template-rows: repeat(6, 1fr); }
   .board.size-6 .cell .notes { grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(2, 1fr); }
-  .board.size-6 .cell .num { font-size: clamp(22px, 8vw, 40px); }
+  .board.size-6 .cell .num { font-size: clamp(28px, 9vw, 52px); }
+  .board.size-6 .cell .notes { font-size: clamp(13px, 3.5vw, 22px); }
 
   /* Diagonal-Markierung als Overlay (nur für Diagonal-Variante) */
   .board.diag::before, .board.diag::after {
@@ -441,6 +443,59 @@
   @media (min-width: 700px) {
     .pad button { min-height: 64px; font-size: 1.8rem; }
   }
+
+  /* === Desktop: Steuerung rechts neben Brett ===================== */
+  .play { display: contents; }
+  .fs-only-desktop { display: none; }
+  @media (min-width: 900px) {
+    .app {
+      max-width: 1280px;
+      gap: 14px;
+    }
+    .play {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 380px;
+      gap: 24px;
+      align-items: start;
+    }
+    .play-board { display: flex; justify-content: center; }
+    .board-wrap {
+      width: min(100%, calc(100vh - 130px));
+      aspect-ratio: 1 / 1;
+    }
+    .board-wrap .board { width: 100%; height: 100%; }
+    .play-controls {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      position: sticky;
+      top: 12px;
+    }
+    .actions { gap: 8px; }
+    .actions button { font-size: 0.85rem; padding: 10px 4px 8px; }
+    .actions button svg { width: 24px; height: 24px; }
+    .pad.size-9 { grid-template-columns: repeat(3, 1fr); }
+    .pad.size-6 { grid-template-columns: repeat(3, 1fr); }
+    .pad button { min-height: 86px; font-size: 2.4rem; }
+    .pad button .color-pad-dot { width: 44px; height: 44px; max-width: 44px; }
+    .pad { gap: 10px; }
+    .cell .num { font-size: clamp(28px, 3.2vw, 44px); }
+    .cell .notes { font-size: clamp(13px, 1.4vw, 20px); }
+    .board.size-6 .cell .num { font-size: clamp(36px, 4.5vw, 60px); }
+    .board.size-6 .cell .notes { font-size: clamp(16px, 2vw, 26px); }
+    .fs-only-desktop { display: inline-flex; }
+  }
+
+  /* Vollbildmodus: Header schrumpft, mehr Brett */
+  body.is-fullscreen .app { max-width: none; padding: 6px 14px; gap: 8px; }
+  body.is-fullscreen header.top { padding: 0; }
+  body.is-fullscreen .title { font-size: 1rem; }
+  body.is-fullscreen .status { padding: 4px 10px; }
+  @media (min-width: 900px) {
+    body.is-fullscreen .board-wrap {
+      width: min(100%, calc(100vh - 90px));
+    }
+  }
 </style>
 </head>
 <body>
@@ -453,6 +508,10 @@
     </button>
     <button class="icon-btn" id="themeBtn" title="Heller/Dunkler Modus" aria-label="Heller/Dunkler Modus">
       <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+    </button>
+    <button class="icon-btn fs-only-desktop" id="fsBtn" title="Vollbild" aria-label="Vollbild">
+      <svg viewBox="0 0 24 24" id="fsIconEnter"><path d="M4 9V4h5"/><path d="M20 9V4h-5"/><path d="M4 15v5h5"/><path d="M20 15v5h-5"/></svg>
+      <svg viewBox="0 0 24 24" id="fsIconExit" style="display:none;"><path d="M9 4v5H4"/><path d="M15 4v5h5"/><path d="M9 20v-5H4"/><path d="M15 20v-5h5"/></svg>
     </button>
     <button class="icon-btn" id="settingsBtn" title="Einstellungen" aria-label="Einstellungen">
       <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
@@ -472,37 +531,43 @@
     </div>
   </div>
 
-  <div class="board-wrap">
-    <div class="board size-9" id="board"></div>
-    <div class="pause-veil" id="pauseVeil" hidden>
-      <button id="resumeBtn">Fortsetzen</button>
+  <div class="play">
+    <div class="play-board">
+      <div class="board-wrap">
+        <div class="board size-9" id="board"></div>
+        <div class="pause-veil" id="pauseVeil" hidden>
+          <button id="resumeBtn">Fortsetzen</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="play-controls">
+      <div class="actions">
+        <button id="undoBtn" title="Rückgängig">
+          <svg viewBox="0 0 24 24"><path d="M9 14l-4-4 4-4"/><path d="M5 10h9a5 5 0 0 1 0 10h-2"/></svg>
+          <span>Zurück</span>
+        </button>
+        <button id="eraseBtn" title="Löschen">
+          <svg viewBox="0 0 24 24"><path d="M3 17l6-6 8 8H9z"/><path d="M9 11l6-6 6 6-6 6"/></svg>
+          <span>Löschen</span>
+        </button>
+        <button id="noteBtn" title="Notizen-Modus" aria-pressed="false">
+          <svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4z"/></svg>
+          <span>Notiz</span>
+        </button>
+        <button id="hintBtn" title="Tipp">
+          <svg viewBox="0 0 24 24"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 0 0-4 12.7c.7.5 1 1.3 1 2.1V18h6v-1.2c0-.8.3-1.6 1-2.1A7 7 0 0 0 12 2z"/></svg>
+          <span>Tipp</span>
+        </button>
+        <button id="checkBtn" title="Prüfen">
+          <svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>
+          <span>Prüfen</span>
+        </button>
+      </div>
+
+      <div class="pad size-9" id="pad"></div>
     </div>
   </div>
-
-  <div class="actions">
-    <button id="undoBtn" title="Rückgängig">
-      <svg viewBox="0 0 24 24"><path d="M9 14l-4-4 4-4"/><path d="M5 10h9a5 5 0 0 1 0 10h-2"/></svg>
-      <span>Zurück</span>
-    </button>
-    <button id="eraseBtn" title="Löschen">
-      <svg viewBox="0 0 24 24"><path d="M3 17l6-6 8 8H9z"/><path d="M9 11l6-6 6 6-6 6"/></svg>
-      <span>Löschen</span>
-    </button>
-    <button id="noteBtn" title="Notizen-Modus" aria-pressed="false">
-      <svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4z"/></svg>
-      <span>Notiz</span>
-    </button>
-    <button id="hintBtn" title="Tipp">
-      <svg viewBox="0 0 24 24"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 0 0-4 12.7c.7.5 1 1.3 1 2.1V18h6v-1.2c0-.8.3-1.6 1-2.1A7 7 0 0 0 12 2z"/></svg>
-      <span>Tipp</span>
-    </button>
-    <button id="checkBtn" title="Prüfen">
-      <svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>
-      <span>Prüfen</span>
-    </button>
-  </div>
-
-  <div class="pad size-9" id="pad"></div>
 
 </div>
 
@@ -1261,6 +1326,20 @@ function applyTheme() {
   document.documentElement.dataset.theme = t;
   document.querySelector('meta[name="theme-color"]').content = t === 'dark' ? '#1d232c' : '#3b5a7a';
 }
+function toggleFullscreen() {
+  if (!document.fullscreenElement) {
+    (document.documentElement.requestFullscreen?.() || Promise.resolve()).catch(()=>{});
+  } else {
+    document.exitFullscreen?.();
+  }
+}
+function updateFsIcon() {
+  const inFs = !!document.fullscreenElement;
+  document.body.classList.toggle('is-fullscreen', inFs);
+  $('#fsIconEnter').style.display = inFs ? 'none' : '';
+  $('#fsIconExit').style.display = inFs ? '' : 'none';
+}
+
 function toggleTheme() {
   const cur = document.documentElement.dataset.theme;
   SETTINGS.theme = cur === 'dark' ? 'light' : 'dark';
@@ -1391,6 +1470,8 @@ function bindEvents() {
   // Header
   $('#newBtn').addEventListener('click', () => { buildNewGameOptions(); openModal('newModal'); });
   $('#themeBtn').addEventListener('click', toggleTheme);
+  $('#fsBtn').addEventListener('click', toggleFullscreen);
+  document.addEventListener('fullscreenchange', updateFsIcon);
   $('#settingsBtn').addEventListener('click', () => openModal('settingsModal'));
   $('#pauseBtn').addEventListener('click', togglePause);
   $('#resumeBtn').addEventListener('click', togglePause);
